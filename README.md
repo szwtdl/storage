@@ -1,6 +1,6 @@
 # storage
 
-[![Build Status](https://github.com/szwtdl/storage/actions/workflows/test.yml/badge.svg)](https://github.com/szwtdl/storage/actions)
+[![Build Status](https://github.com/szwtdl/storage/actions/workflows/tests.yml/badge.svg)](https://github.com/szwtdl/storage/actions)
 [![Latest Stable Version](https://poser.pugx.org/szwtdl/storage/v/stable)](https://packagist.org/packages/szwtdl/storage)
 [![Total Downloads](https://poser.pugx.org/szwtdl/storage/downloads)](https://packagist.org/packages/szwtdl/storage)
 [![Latest Unstable Version](https://poser.pugx.org/szwtdl/storage/v/unstable)](https://packagist.org/packages/szwtdl/storage)
