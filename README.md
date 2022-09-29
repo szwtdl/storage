@@ -67,7 +67,6 @@ $upload = new \Szwtdl\Storage\Upload($options);
 $object = "test/example.txt";
 $content = "Hello OSS";
 try {
-    $upload = new \Szwtdl\Storage\Upload($options);
     $result = $upload->storage->upload($object, $content);
     dd($result);
 } catch (Exception $e) {
@@ -81,7 +80,6 @@ try {
 $object = "test/example.txt";
 $path = './test/demo.txt'
 try {
-    $upload = new \Szwtdl\Storage\Upload($options);
     $upload->storage->download($object, $path);
 } catch (Exception $e) {
     dd($e->getMessage());
@@ -93,7 +91,6 @@ try {
 ```bash
 $object = "test/example.txt";
 try {
-    $upload = new \Szwtdl\Storage\Upload($options);
     $upload->storage->delete($object);
 } catch (Exception $e) {
     dd($e->getMessage());
