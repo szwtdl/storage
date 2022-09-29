@@ -3,7 +3,7 @@
   "description": "laravel-storage 阿里云oss,腾讯云cos,对象存储包",
   "type": "library",
   "require": {
-    "php": ">=7.4",
+    "php": ">=7.2",
     "aliyuncs/oss-sdk-php": "^2.6",
     "qcloud/cos-sdk-v5": "^2.5"
   },
