@@ -12,7 +12,10 @@ namespace Szwtdl\Storage\Service;
 
 use OSS\Core\OssException;
 use OSS\Credentials\StaticCredentialsProvider;
+use OSS\Http\RequestCore_Exception;
 use OSS\OssClient;
+use Szwtdl\Storage\Exception\Exception;
+use Szwtdl\Storage\Exception\InvalidArgumentException;
 
 class Aliyun implements IService
 {
@@ -22,20 +25,21 @@ class Aliyun implements IService
 
     public function __construct(array $config)
     {
-        $this->config = new Config($config);
         try {
+            $this->config = new Config($config);
             $clientConfig = [
                 'provider' => new StaticCredentialsProvider($this->config->getAccessKey(), $this->config->getSecretKey()),
                 'endpoint' => $this->config->getEndpoint(),
                 'region' => $this->config->getOption('region'),
             ];
             $this->ossClient = new OssClient($clientConfig);
-        } catch (OssException $e) {
-            return $e->getMessage();
+        } catch (OssException|InvalidArgumentException $e) {
+            echo "错误信息:".$e->getMessage();
+            throw new Exception("初始化失败:" . $e->getMessage());
         }
     }
 
-    public function buckets(): array
+    public function listBuckets(): array
     {
         try {
             $bucketListInfo = $this->ossClient->listBuckets();
@@ -51,8 +55,29 @@ class Aliyun implements IService
                 ];
             }
             return $items;
-        } catch (OssException $e) {
-            return [];
+        } catch (OssException|RequestCore_Exception $e) {
+            throw new Exception("获取列表失败:" . $e->getMessage());
+        }
+    }
+
+    public function createBucket(string $name, array $options = array())
+    {
+        try {
+            $options = array_merge($options, [
+                OssClient::OSS_STORAGE => OssClient::OSS_STORAGE_IA
+            ]);
+            return $this->ossClient->createBucket($name, OssClient::OSS_ACL_TYPE_PUBLIC_READ, $options);
+        } catch (OssException|RequestCore_Exception $e) {
+            throw new Exception("创建失败:" . $e->getMessage());
+        }
+    }
+
+    public function deleteBucket(string $name)
+    {
+        try {
+            return $this->ossClient->deleteBucket($name);
+        } catch (OssException|RequestCore_Exception $e) {
+            throw new Exception("删除失败:" . $e->getMessage());
         }
     }
 
@@ -67,8 +92,8 @@ class Aliyun implements IService
             $objectList = $result->getObjectList();
             print_r($result->getPrefixList());
             print_r($result);
-        } catch (OssException $e) {
-            print_r($e->getMessage());
+        } catch (OssException|RequestCore_Exception $e) {
+            throw new Exception("获取列表失败:" . $e->getMessage());
         }
         return [];
     }
@@ -77,8 +102,8 @@ class Aliyun implements IService
     {
         try {
             return $this->ossClient->uploadFile($this->config->getBucket(), $object, $filePath);
-        } catch (OssException $e) {
-            return $e->getMessage();
+        } catch (OssException|RequestCore_Exception $e) {
+            throw new Exception("上传失败:" . $e->getMessage());
         }
     }
 
@@ -86,21 +111,20 @@ class Aliyun implements IService
     {
         try {
             return $this->ossClient->deleteObject($this->config->getBucket(), $object);
-        } catch (OssException $e) {
-            return $e->getMessage();
+        } catch (OssException|RequestCore_Exception $e) {
+            throw new Exception("删除失败:" . $e->getMessage());
         }
     }
 
-    public function download(string $object, string $filePath, array $options = []): bool
+    public function download(string $object, string $filePath, array $options = [])
     {
         try {
             $options = array_merge($options, [
                 OssClient::OSS_FILE_DOWNLOAD => $filePath,
             ]);
-            $this->ossClient->getObject($this->config->getBucket(), $object, $options);
-            return true;
-        } catch (\Exception $exception) {
-            return false;
+            return $this->ossClient->getObject($this->config->getBucket(), $object, $options);
+        } catch (OssException|RequestCore_Exception $e) {
+            throw new Exception("下载失败:" . $e->getMessage());
         }
     }
 }

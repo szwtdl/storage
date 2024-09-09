@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 namespace Szwtdl\Storage\Service;
 
+use Szwtdl\Storage\Exception\InvalidArgumentException;
+
 class Config
 {
     protected string $access_key;
@@ -28,13 +30,14 @@ class Config
             || ! empty($config['secret_key'])
             || ! empty($config['bucket'])
             || ! empty($config['endpoint'])
-            || is_array($config['options'])
-        ) {
+            || is_array($config['options'])) {
             $this->access_key = $config['access_key'];
             $this->secret_key = $config['secret_key'];
             $this->bucket = $config['bucket'];
             $this->endpoint = $config['endpoint'];
             $this->options = $config['options'];
+        }else{
+            throw new InvalidArgumentException("配置参数错误");
         }
     }
 

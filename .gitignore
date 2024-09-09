@@ -1,4 +1,5 @@
 .idea
 /vendor
 /example
+/config
 composer.lock

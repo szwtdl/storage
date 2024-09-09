@@ -12,7 +12,11 @@ namespace Szwtdl\Storage\Service;
 
 interface IService
 {
-    public function buckets();
+    public function listBuckets();
+
+    public function createBucket(string $name, array $options = array());
+
+    public function deleteBucket(string $name);
 
     public function listObj(array $options);
 
@@ -20,5 +24,5 @@ interface IService
 
     public function delete(string $object);
 
-    public function download(string $object, string $filePath, array $options): bool;
+    public function download(string $object, string $filePath, array $options);
 }

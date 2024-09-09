@@ -11,6 +11,8 @@ declare(strict_types=1);
 namespace Szwtdl\Storage\Service;
 
 use Qcloud\Cos\Client;
+use Szwtdl\Storage\Exception\Exception;
+use Szwtdl\Storage\Exception\InvalidArgumentException;
 
 class Tencent implements IService
 {
@@ -20,8 +22,8 @@ class Tencent implements IService
 
     public function __construct(array $config)
     {
-        $this->config = new Config($config);
         try {
+            $this->config = new Config($config);
             $cosConfig = [
                 'region' => $this->config->getOption('region'),
                 'scheme' => 'https',
@@ -31,32 +33,52 @@ class Tencent implements IService
                 ],
             ];
             $this->client = new Client($cosConfig);
-        } catch (\Exception $exception) {
-            return $exception->getMessage();
+        } catch (Exception|InvalidArgumentException $e) {
+            throw new Exception("初始化错误:".$e->getMessage());
         }
     }
 
-    public function buckets(): array
+    public function listBuckets(): array
     {
         try {
             $result = $this->client->listBuckets();
             $bucketList = $result['Buckets'][0]['Bucket'];
             $items = [];
-            foreach ($bucketList as $item) {
-                $items[] = [
-                    'name' => $item['Name'],
-                    'region' => $item['Location'],
-                    'class' => $item['BucketType'],
-                    'created_at' => date('Y-m-d H:i:s', strtotime($item['CreationDate'])),
-                ];
+            if (!empty($bucketList) && is_array($bucketList)) {
+                foreach ($bucketList as $item) {
+                    $items[] = [
+                        'name' => $item['Name'],
+                        'region' => $item['Location'],
+                        'class' => $item['BucketType'],
+                        'created_at' => date('Y-m-d H:i:s', strtotime($item['CreationDate'])),
+                    ];
+                }
             }
             return $items;
-        } catch (\Exception $exception) {
-            return [];
+        } catch (Exception $e) {
+            throw new Exception("获取失败:".$e->getMessage());
         }
     }
 
-    public function listObj(array $options = []): array
+    public function createBucket(string $name, array $options = array()): object
+    {
+        try {
+            return $this->client->createBucket(array('Bucket' => $name));
+        } catch (Exception $e) {
+            throw new Exception("创建失败:".$e->getMessage());
+        }
+    }
+
+    public function deleteBucket(string $name): object
+    {
+        try {
+            return $this->client->deleteBucket(array('Bucket' => $name));
+        } catch (Exception $e) {
+            throw new Exception("删除失败".$e->getMessage());
+        }
+    }
+
+    public function listObj(array $options = [])
     {
         try {
             $delimiter = empty($options['delimiter']) ? '' : $options['delimiter'];
@@ -73,10 +95,9 @@ class Tencent implements IService
             ]);
             // 请求成功
             print_r($result);
-        } catch (\Exception $e) {
-            echo $e;
+        } catch (Exception $e) {
+            throw new Exception("获取失败".$e->getMessage());
         }
-        return [];
     }
 
     public function upload(string $filePath, string $object)
@@ -87,34 +108,33 @@ class Tencent implements IService
                 $object,
                 fopen($filePath, 'rb')
             );
-        } catch (\Exception $exception) {
-            return $exception->getMessage();
+        } catch (Exception $e) {
+            throw new Exception("上传失败:".$e->getMessage());
         }
     }
 
-    public function delete(string $object)
+    public function delete(string $object): object
     {
         try {
             return $this->client->deleteObject([
                 'Bucket' => $this->getBucket(),
                 'Key' => $object,
             ]);
-        } catch (\Exception $exception) {
-            return $exception->getMessage();
+        } catch (Exception $e) {
+            throw new Exception("删除失败:".$e->getMessage());
         }
     }
 
-    public function download(string $object, string $filePath, array $options = []): bool
+    public function download(string $object, string $filePath, array $options = []): object
     {
         try {
-            $this->client->getObject([
+            return $this->client->getObject([
                 'Bucket' => $this->getBucket(),
                 'Key' => $object,
                 'SaveAs' => $filePath,
             ]);
-            return true;
-        } catch (\Exception $e) {
-            return false;
+        } catch (Exception $e) {
+            throw new Exception("下载失败:".$e->getMessage());
         }
     }
 

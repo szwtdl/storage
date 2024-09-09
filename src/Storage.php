@@ -10,6 +10,8 @@ declare(strict_types=1);
 
 namespace Szwtdl\Storage;
 
+use Szwtdl\Storage\Exception\InvalidArgumentException;
+
 /**
  * @method object Aliyun(array $config)
  * @method object Tencent(array $config)
@@ -20,19 +22,28 @@ class Storage
     /**
      * @param mixed $method
      * @param mixed $arguments
-     * @throws \Exception
+     * @throws InvalidArgumentException
      */
     public static function __callStatic($method, $arguments)
     {
         return self::make($method, $arguments[0]);
     }
 
-    private static function make(string $name, array $config)
+    /**
+     * @throws InvalidArgumentException
+     */
+    public function __call($method, $arguments)
     {
-        $class = "Szwtdl\\Storage\\Service\\{$name}";
+        return self::make($method, $arguments[0]);
+    }
+
+    private static function make(string $method, array $config)
+    {
+        $method = ucfirst($method);
+        $class = "Szwtdl\\Storage\\Service\\{$method}";
         if (class_exists($class)) {
             return new $class($config);
         }
-        throw new \Exception("Error class {$class}");
+        throw new InvalidArgumentException("没有找到{$method}服务");
     }
 }

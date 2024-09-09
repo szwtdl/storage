@@ -13,6 +13,8 @@ namespace Szwtdl\Storage\Service;
 use Qiniu\Auth;
 use Qiniu\Storage\BucketManager;
 use Qiniu\Storage\UploadManager;
+use Szwtdl\Storage\Exception\Exception;
+use Szwtdl\Storage\Exception\InvalidArgumentException;
 
 class Qiniu implements IService
 {
@@ -22,30 +24,57 @@ class Qiniu implements IService
 
     public function __construct(array $config)
     {
-        $this->config = new Config($config);
         try {
+            $this->config = new Config($config);
             $this->auth = new Auth($this->config->getAccessKey(), $this->config->getSecretKey());
-        } catch (\Exception $exception) {
-            return $exception->getMessage();
+        } catch (Exception|InvalidArgumentException $e) {
+            throw new Exception("初始化失败:".$e->getMessage());
         }
     }
 
-    public function buckets(): array
+    public function listBuckets(): array
     {
-        $bucketMgr = new BucketManager($this->auth);
-        $bucketList = $bucketMgr->listbuckets()[0];
-        $items = [];
-        foreach ($bucketList as $item) {
-            $items[] = [
-                'name' => $item['id'],
-                'region' => $item['region'],
-                'created_at' => date('Y-m-d H:i:s', $item['ctime']),
-            ];
+        try {
+            $bucketMgr = new BucketManager($this->auth);
+            $bucketList = $bucketMgr->listbuckets()[0];
+            $items = [];
+            if (!empty($bucketList)) {
+                foreach ($bucketList as $item) {
+                    $items[] = [
+                        'name' => $item['id'],
+                        'region' => $item['region'],
+                        'created_at' => date('Y-m-d H:i:s', $item['ctime']),
+                    ];
+                }
+            }
+            return $items;
+        }catch (Exception $e){
+            throw new Exception("获取失败:".$e->getMessage());
         }
-        return $items;
     }
 
-    public function listObj(array $options = []): array
+    public function createBucket(string $name, array $options = array()): array
+    {
+        try {
+            $bucketMgr = new BucketManager($this->auth);
+            $region = empty($options['region']) ? 'z0': $options['region'];
+            return $bucketMgr->createBucket($name,$region);
+        }catch (Exception $e){
+            throw new Exception("创建失败:".$e->getMessage());
+        }
+    }
+
+    public function deleteBucket(string $name): array
+    {
+        try {
+            $bucketMgr = new BucketManager($this->auth);
+            return $bucketMgr->deleteBucket($name);
+        }catch (Exception $e){
+            throw new Exception("删除失败:".$e->getMessage());
+        }
+    }
+
+    public function listObj(array $options = [])
     {
         $prefix = $options['prefix'] ?? '';
         $marker = $options['marker'] ?? '';
@@ -67,8 +96,8 @@ class Qiniu implements IService
                 ];
             }
             return $items;
-        } catch (\Exception $exception) {
-            return [];
+        } catch (Exception $e) {
+            throw new Exception("获取失败:".$e->getMessage());
         }
     }
 
@@ -82,22 +111,22 @@ class Qiniu implements IService
                 return $err;
             }
             return $ret;
-        } catch (\Exception $exception) {
-            return $exception->getMessage();
+        } catch (Exception $e) {
+            throw new Exception("上传失败:".$e->getMessage());
         }
     }
 
-    public function delete(string $object)
+    public function delete(string $object): array
     {
         try {
             $bucketManager = new BucketManager($this->auth);
             return $bucketManager->delete($this->config->getBucket(), $object);
-        } catch (\Exception $exception) {
-            return $exception->getMessage();
+        } catch (Exception $e) {
+            throw new Exception("删除失败:".$e->getMessage());
         }
     }
 
-    public function download(string $object, string $filePath, array $options = []): bool
+    public function download(string $object, string $filePath, array $options = []): int
     {
         try {
             $baseUrl = "{$this->config->getOption('domain')}/{$object}";
@@ -109,17 +138,16 @@ class Qiniu implements IService
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false); // 禁用主机验证
             $fileContent = curl_exec($ch);
             if ($fileContent === false) {
-                throw new \Exception('Curl error: ' . curl_error($ch));
+                throw new Exception('Curl error: ' . curl_error($ch));
             }
             curl_close($ch);
             $result = file_put_contents($filePath, $fileContent);
             if ($result === false) {
-                throw new \Exception("Failed to save file to {$filePath}");
+                throw new Exception("Failed to save file to {$filePath}");
             }
-            return true;
-        } catch (\Exception $exception) {
-            print_r($exception->getMessage());
-            return false;
+            return $result;
+        } catch (Exception $e) {
+            throw new Exception("下载失败:".$e->getMessage());
         }
     }
 }
