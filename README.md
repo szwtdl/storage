@@ -42,8 +42,8 @@ $local_path = "./example/example.txt";
 app('storage')->upload($local_path,$object);
 
 ##### 下载
-app('storage')->upload($object,$$local_path);
+app('storage')->download($object,$$local_path);
 
 #### 删除文件
-app('storage')->upload($object);
+app('storage')->delete($object);
 ```
