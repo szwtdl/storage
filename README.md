@@ -36,6 +36,8 @@ $storage = Storage::driver('aliyun', $config);
 ```php
 interface IService
 {
+    public function getTemporaryCredentials(array $options = []): array;
+
     public function listBuckets(): array;
 
     public function createBucket(string $name, array $options = []): array;
@@ -134,6 +136,27 @@ interface IService
 ]
 ```
 
+### 临时凭证 `getTemporaryCredentials`
+
+```php
+[
+    'type' => 'sts', // 七牛为 upload_token
+    'credentials' => [
+        'access_key_id' => 'tmp-ak',
+        'access_key_secret' => 'tmp-sk',
+        'session_token' => 'token',
+        'upload_token' => 'qiniu-upload-token',
+    ],
+    'expiration' => '2026-04-12T12:00:00Z',
+    'expired_at' => 1760000000,
+    'bucket' => 'demo-bucket',
+    'region' => 'oss-cn-qingdao',
+    'domain' => 'https://cdn.example.com',
+    'success' => true,
+    'raw' => $sdkResponse,
+]
+```
+
 ## 接口示例
 
 ### 1. 创建服务实例
@@ -152,6 +175,61 @@ $storage = Storage::driver('aliyun', $config);
 $buckets = $storage->listBuckets();
 
 print_r($buckets);
+```
+
+### 2.1 获取临时凭证
+
+阿里云 STS：
+
+```php
+$result = $storage->getTemporaryCredentials([
+    'role_arn' => 'acs:ram::1234567890123456:role/oss-sts-role',
+    'role_session_name' => 'web-upload',
+    'duration_seconds' => 3600,
+]);
+
+print_r($result);
+```
+
+腾讯云 STS：
+
+```php
+$storage = Storage::driver('tencent', $config);
+
+$result = $storage->getTemporaryCredentials([
+    'duration_seconds' => 3600,
+    'allow_prefix' => ['/*'],
+    'allow_actions' => ['name/cos:*'],
+]);
+
+print_r($result);
+```
+
+七牛上传 Token：
+
+```php
+$storage = Storage::driver('qiniu', $config);
+
+$result = $storage->getTemporaryCredentials([
+    'key' => 'demo/logo.png',
+    'expires' => 3600,
+]);
+
+print_r($result);
+```
+
+如果你已经从业务侧拿到了临时凭证，也可以直接透传：
+
+```php
+$result = $storage->getTemporaryCredentials([
+    'credentials' => [
+        'access_key_id' => 'tmp-ak',
+        'access_key_secret' => 'tmp-sk',
+        'session_token' => 'tmp-token',
+    ],
+    'expiration' => '2026-04-12T12:00:00Z',
+    'expired_at' => 1760000000,
+]);
 ```
 
 ### 3. 创建存储桶

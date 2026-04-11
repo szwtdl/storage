@@ -19,7 +19,8 @@
         "ext-curl": "*",
         "aliyuncs/oss-sdk-php": "^2.7",
         "qcloud/cos-sdk-v5": "^2.6",
-        "qiniu/php-sdk": "^7.2"
+        "qiniu/php-sdk": "^7.2",
+        "qcloud_sts/qcloud-sts-sdk": "^3.0"
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.10",

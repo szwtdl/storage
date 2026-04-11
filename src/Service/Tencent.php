@@ -38,6 +38,39 @@ class Tencent implements IService
         }
     }
 
+    public function getTemporaryCredentials(array $options = array()): array
+    {
+        $stsOptions = $this->resolveStsOptions($options);
+
+        if (!empty($stsOptions['credentials']) && is_array($stsOptions['credentials'])) {
+            return $this->normalizeTemporaryCredentials($stsOptions['credentials'], $stsOptions);
+        }
+
+        if (class_exists('\\QCloud\\COSSTS\\Sts')) {
+            $sts = new \QCloud\COSSTS\Sts();
+            $result = $sts->getTempKeys([
+                'url' => $stsOptions['url'] ?? 'https://sts.tencentcloudapi.com/',
+                'domain' => $stsOptions['domain'] ?? 'sts.tencentcloudapi.com',
+                'proxy' => $stsOptions['proxy'] ?? '',
+                'secretId' => $this->config->getAccessKey(),
+                'secretKey' => $this->config->getSecretKey(),
+                'bucket' => $this->getBucket(),
+                'region' => $this->config->getOption('region'),
+                'durationSeconds' => $stsOptions['duration_seconds'] ?? 3600,
+                'allowPrefix' => $stsOptions['allow_prefix'] ?? ['/*'],
+                'allowActions' => $stsOptions['allow_actions'] ?? ['name/cos:*'],
+            ]);
+
+            if (!empty($stsOptions['condition'])) {
+                $result['condition'] = $stsOptions['condition'];
+            }
+
+            return $this->normalizeTemporaryCredentials($result['credentials'] ?? [], $result);
+        }
+
+        throw new Exception('获取临时密钥失败:未安装腾讯云 STS SDK，或缺少 credentials 配置');
+    }
+
     public function listBuckets(): array
     {
         try {
@@ -225,5 +258,42 @@ class Tencent implements IService
         if (!is_file($filePath)) {
             throw new Exception($filePath . ' file does not exist');
         }
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    private function resolveStsOptions(array $options): array
+    {
+        $configOptions = $this->config->getOption('sts', []);
+        if (!is_array($configOptions)) {
+            $configOptions = [];
+        }
+
+        return array_merge($configOptions, $options);
+    }
+
+    /**
+     * @param array<string, mixed> $credentials
+     * @param array<string, mixed> $raw
+     */
+    private function normalizeTemporaryCredentials(array $credentials, array $raw): array
+    {
+        return [
+            'type' => 'sts',
+            'credentials' => [
+                'access_key_id' => $credentials['tmpSecretId'] ?? $credentials['access_key_id'] ?? null,
+                'access_key_secret' => $credentials['tmpSecretKey'] ?? $credentials['access_key_secret'] ?? null,
+                'session_token' => $credentials['sessionToken'] ?? $credentials['token'] ?? $credentials['session_token'] ?? null,
+            ],
+            'expiration' => $raw['expiration'] ?? null,
+            'expired_at' => isset($raw['expiredTime']) ? (int) $raw['expiredTime'] : (isset($raw['expired_at']) ? (int) $raw['expired_at'] : null),
+            'bucket' => $this->getBucket(),
+            'region' => $this->config->getOption('region'),
+            'domain' => $this->config->getOption('domain'),
+            'success' => true,
+            'raw' => $raw,
+        ];
     }
 }

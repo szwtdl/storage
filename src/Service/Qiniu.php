@@ -32,6 +32,37 @@ class Qiniu implements IService
         }
     }
 
+    public function getTemporaryCredentials(array $options = array()): array
+    {
+        $expires = (int) ($options['expires'] ?? $options['duration_seconds'] ?? 3600);
+        $key = $options['key'] ?? null;
+        $policy = $options['policy'] ?? null;
+        $strictPolicy = isset($options['strict_policy']) ? (bool) $options['strict_policy'] : true;
+        $token = $this->auth->uploadToken($this->config->getBucket(), $key, $expires, $policy, $strictPolicy);
+        $expiredAt = time() + $expires;
+
+        return [
+            'type' => 'upload_token',
+            'credentials' => [
+                'upload_token' => $token,
+                'access_key_id' => $this->auth->getAccessKey(),
+            ],
+            'expiration' => date('c', $expiredAt),
+            'expired_at' => $expiredAt,
+            'bucket' => $this->config->getBucket(),
+            'region' => $this->config->getOption('region'),
+            'domain' => $this->config->getOption('domain'),
+            'success' => true,
+            'raw' => [
+                'bucket' => $this->config->getBucket(),
+                'key' => $key,
+                'expires' => $expires,
+                'policy' => $policy,
+                'strict_policy' => $strictPolicy,
+            ],
+        ];
+    }
+
     public function listBuckets(): array
     {
         try {

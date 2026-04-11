@@ -67,9 +67,28 @@ namespace Szwtdl\Storage\Service;
  *     success: bool,
  *     raw: mixed
  * }
+ * @phpstan-type TemporaryCredentialsResult array{
+ *     type: string,
+ *     credentials: array<string, mixed>,
+ *     expiration?: string|null,
+ *     expired_at?: int|null,
+ *     bucket?: string|null,
+ *     region?: string|null,
+ *     domain?: string|null,
+ *     success: bool,
+ *     raw: mixed
+ * }
  */
 interface IService
 {
+    /**
+     * 获取临时密钥或临时上传凭证。
+     *
+     * @param array<string, mixed> $options 厂商自定义参数
+     * @return TemporaryCredentialsResult
+     */
+    public function getTemporaryCredentials(array $options = array()): array;
+
     /**
      * 获取存储桶列表。
      *
