@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests;
 
 use PHPUnit\Framework\TestCase;
-use Szwtdl\Storage\Service\IService;
-use Szwtdl\Storage\Storage;
+use Szwtdl\Service\IService;
+use Szwtdl\Storage;
 
 class StorageTest extends TestCase
 {

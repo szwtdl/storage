@@ -11,8 +11,8 @@ composer require szwtdl/storage
 ## 基础配置
 
 ```php
-use Szwtdl\Storage\Service\IService;
-use Szwtdl\Storage\Storage;
+use Szwtdl\Service\IService;
+use Szwtdl\Storage;
 
 $config = [
     'access_key' => 'your-access-key',
@@ -162,8 +162,8 @@ interface IService
 ### 1. 创建服务实例
 
 ```php
-use Szwtdl\Storage\Service\IService;
-use Szwtdl\Storage\Storage;
+use Szwtdl\Service\IService;
+use Szwtdl\Storage;
 
 /** @var IService $storage */
 $storage = Storage::driver('aliyun', $config);
@@ -326,7 +326,7 @@ php artisan vendor:publish --provider="Szwtdl\Storage\ServiceProvider"
 使用容器：
 
 ```php
-/** @var \Szwtdl\Storage\Service\IService $storage */
+/** @var \Szwtdl\Service\IService $storage */
 $storage = app('storage');
 
 $storage->upload('/absolute/path/logo.png', 'demo/logo.png');

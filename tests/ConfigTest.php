@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Tests;
 
 use PHPUnit\Framework\TestCase;
-use Szwtdl\Storage\Exception\InvalidArgumentException;
-use Szwtdl\Storage\Service\Config;
+use Szwtdl\Exception\InvalidArgumentException;
+use Szwtdl\Service\Config;
 
 class ConfigTest extends TestCase
 {

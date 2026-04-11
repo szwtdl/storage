@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests;
 
 use PHPUnit\Framework\TestCase;
-use Szwtdl\Storage\Service\Aliyun;
-use Szwtdl\Storage\Service\Qiniu;
-use Szwtdl\Storage\Service\Tencent;
+use Szwtdl\Service\Aliyun;
+use Szwtdl\Service\Qiniu;
+use Szwtdl\Service\Tencent;
 
 class TemporaryCredentialsTest extends TestCase
 {

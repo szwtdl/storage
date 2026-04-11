@@ -8,12 +8,12 @@ declare(strict_types=1);
  * @license  https://github.com/szwtdl/storage/blob/master/LICENSE
  */
 
-namespace Szwtdl\Storage;
+namespace Szwtdl;
 
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Log;
-use Szwtdl\Storage\Service\IService;
+use Szwtdl\Service\IService;
 
 class ServiceProvider extends BaseServiceProvider
 {
