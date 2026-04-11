@@ -11,17 +11,26 @@ declare(strict_types=1);
 namespace Szwtdl\Storage;
 
 use Szwtdl\Storage\Exception\InvalidArgumentException;
+use Szwtdl\Storage\Service\Aliyun;
+use Szwtdl\Storage\Service\IService;
+use Szwtdl\Storage\Service\Qiniu;
+use Szwtdl\Storage\Service\Tencent;
 
 /**
- * @method object Aliyun(array $config)
- * @method object Tencent(array $config)
- * @method object Qiniu(array $config)
+ * @mixin IService
+ * @method static Aliyun aliyun(array $config)
+ * @method static Aliyun Aliyun(array $config)
+ * @method static Tencent tencent(array $config)
+ * @method static Tencent Tencent(array $config)
+ * @method static Qiniu qiniu(array $config)
+ * @method static Qiniu Qiniu(array $config)
  */
 class Storage
 {
     /**
      * @param mixed $method
      * @param mixed $arguments
+     * @return IService
      * @throws InvalidArgumentException
      */
     public static function __callStatic($method, $arguments)
@@ -30,6 +39,7 @@ class Storage
     }
 
     /**
+     * @return IService
      * @throws InvalidArgumentException
      */
     public function __call($method, $arguments)
@@ -37,7 +47,18 @@ class Storage
         return self::make($method, $arguments[0]);
     }
 
-    private static function make(string $method, array $config)
+    /**
+     * @throws InvalidArgumentException
+     */
+    public static function driver(string $method, array $config): IService
+    {
+        return self::make($method, $config);
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    private static function make(string $method, array $config): IService
     {
         $method = ucfirst($method);
         $class = "Szwtdl\\Storage\\Service\\{$method}";

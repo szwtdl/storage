@@ -13,6 +13,8 @@ namespace Szwtdl\Storage;
 use Illuminate\Support\ServiceProvider as BaseServiceProvider;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Log;
+use Szwtdl\Storage\Service\IService;
+
 class ServiceProvider extends BaseServiceProvider
 {
     protected $defer = true;
@@ -20,11 +22,15 @@ class ServiceProvider extends BaseServiceProvider
     public function register()
     {
         $this->setupConfig();
-        $this->app->singleton(Storage::class, function () {
+        $this->app->singleton(IService::class, function (): IService {
             $name = config('storage.default');
             $configs = config('storage.list');
-            return Storage::$name($configs[$name]);
+            return Storage::driver($name, $configs[$name]);
         });
+        $this->app->singleton(Storage::class, function () {
+            return $this->app->make(IService::class);
+        });
+        $this->app->alias(IService::class, 'storage');
         $this->app->alias(Storage::class, 'upload');
     }
 

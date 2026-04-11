@@ -12,7 +12,7 @@ namespace Szwtdl\Storage\Service;
 
 use Qcloud\Cos\Client;
 use Szwtdl\Storage\Exception\Exception;
-use Szwtdl\Storage\Exception\InvalidArgumentException;
+use Throwable;
 
 class Tencent implements IService
 {
@@ -33,7 +33,7 @@ class Tencent implements IService
                 ],
             ];
             $this->client = new Client($cosConfig);
-        } catch (Exception|InvalidArgumentException $e) {
+        } catch (Throwable $e) {
             throw new Exception("初始化错误:".$e->getMessage());
         }
     }
@@ -42,7 +42,7 @@ class Tencent implements IService
     {
         try {
             $result = $this->client->listBuckets();
-            $bucketList = $result['Buckets'][0]['Bucket'];
+            $bucketList = $result['Buckets'][0]['Bucket'] ?? [];
             $items = [];
             if (!empty($bucketList) && is_array($bucketList)) {
                 foreach ($bucketList as $item) {
@@ -55,30 +55,42 @@ class Tencent implements IService
                 }
             }
             return $items;
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             throw new Exception("获取失败:".$e->getMessage());
         }
     }
 
-    public function createBucket(string $name, array $options = array()): object
+    public function createBucket(string $name, array $options = array()): array
     {
         try {
-            return $this->client->createBucket(array('Bucket' => $name));
-        } catch (Exception $e) {
+            $result = $this->client->createBucket(array('Bucket' => $name));
+            return [
+                'name' => $name,
+                'status' => 'created',
+                'success' => true,
+                'raw' => $result,
+            ];
+        } catch (Throwable $e) {
             throw new Exception("创建失败:".$e->getMessage());
         }
     }
 
-    public function deleteBucket(string $name): object
+    public function deleteBucket(string $name): array
     {
         try {
-            return $this->client->deleteBucket(array('Bucket' => $name));
-        } catch (Exception $e) {
+            $result = $this->client->deleteBucket(array('Bucket' => $name));
+            return [
+                'name' => $name,
+                'status' => 'deleted',
+                'success' => true,
+                'raw' => $result,
+            ];
+        } catch (Throwable $e) {
             throw new Exception("删除失败".$e->getMessage());
         }
     }
 
-    public function listObj(array $options = [])
+    public function listObj(array $options = []): array
     {
         try {
             $delimiter = empty($options['delimiter']) ? '' : $options['delimiter'];
@@ -86,54 +98,104 @@ class Tencent implements IService
             $prefix = empty($options['prefix']) ? '' : $options['prefix'];
             $MaxKeys = empty($options['max_keys']) ? 100 : $options['max_keys'];
             $result = $this->client->listObjects([
-                'Bucket' => $this->getBucket(), // 存储桶名称，由BucketName-Appid 组成，可以在COS控制台查看 https://console.cloud.tencent.com/cos5/bucket
-                'Delimiter' => $delimiter, // Delimiter表示分隔符, 设置为/表示列出当前目录下的object, 设置为空表示列出所有的object
-                'EncodingType' => 'url', // 编码格式，对应请求中的 encoding-type 参数
-                'Marker' => $marker, // 起始对象键标记
-                'Prefix' => $prefix, // Prefix表示列出的object的key以prefix开始
-                'MaxKeys' => $MaxKeys, // 设置最大遍历出多少个对象, 一次listObjects最大支持1000
+                'Bucket' => $this->getBucket(),
+                'Delimiter' => $delimiter,
+                'EncodingType' => 'url',
+                'Marker' => $marker,
+                'Prefix' => $prefix,
+                'MaxKeys' => $MaxKeys,
             ]);
-            // 请求成功
-            print_r($result);
-        } catch (Exception $e) {
+            $items = [];
+
+            foreach ($result['Contents'] ?? [] as $object) {
+                $key = urldecode($object['Key']);
+                $items[] = [
+                    'path' => $key,
+                    'name' => basename($key),
+                    'size' => (int) ($object['Size'] ?? 0),
+                    'type' => $this->isDirectoryPath($key) ? 'dir' : 'file',
+                    'etag' => isset($object['ETag']) ? trim((string) $object['ETag'], '"') : null,
+                    'url' => $this->buildObjectUrl($key),
+                    'last_modified' => isset($object['LastModified']) ? date('Y-m-d H:i:s', strtotime($object['LastModified'])) : null,
+                ];
+            }
+
+            foreach ($result['CommonPrefixes'] ?? [] as $prefixItem) {
+                $prefixPath = urldecode($prefixItem['Prefix']);
+                $items[] = [
+                    'path' => $prefixPath,
+                    'name' => basename(rtrim($prefixPath, '/')),
+                    'size' => 0,
+                    'type' => 'dir',
+                    'etag' => null,
+                    'url' => $this->buildObjectUrl($prefixPath),
+                    'last_modified' => null,
+                ];
+            }
+
+            return $items;
+        } catch (Throwable $e) {
             throw new Exception("获取失败".$e->getMessage());
         }
     }
 
-    public function upload(string $filePath, string $object)
+    public function upload(string $filePath, string $object): array
     {
         try {
-            return $this->client->upload(
+            $this->assertLocalFileExists($filePath);
+            $result = $this->client->upload(
                 $this->getBucket(),
                 $object,
                 fopen($filePath, 'rb')
             );
-        } catch (Exception $e) {
+            return [
+                'path' => $object,
+                'name' => basename($object),
+                'size' => (int) filesize($filePath),
+                'etag' => isset($result['ETag']) ? trim((string) $result['ETag'], '"') : null,
+                'url' => $this->buildObjectUrl($object),
+                'success' => true,
+                'raw' => $result,
+            ];
+        } catch (Throwable $e) {
             throw new Exception("上传失败:".$e->getMessage());
         }
     }
 
-    public function delete(string $object): object
+    public function delete(string $object): array
     {
         try {
-            return $this->client->deleteObject([
+            $result = $this->client->deleteObject([
                 'Bucket' => $this->getBucket(),
                 'Key' => $object,
             ]);
-        } catch (Exception $e) {
+            return [
+                'path' => $object,
+                'success' => true,
+                'raw' => $result,
+            ];
+        } catch (Throwable $e) {
             throw new Exception("删除失败:".$e->getMessage());
         }
     }
 
-    public function download(string $object, string $filePath, array $options = []): object
+    public function download(string $object, string $filePath, array $options = []): array
     {
         try {
-            return $this->client->getObject([
+            $result = $this->client->getObject([
                 'Bucket' => $this->getBucket(),
                 'Key' => $object,
                 'SaveAs' => $filePath,
             ]);
-        } catch (Exception $e) {
+            return [
+                'path' => $object,
+                'save_as' => $filePath,
+                'size' => file_exists($filePath) ? (int) filesize($filePath) : 0,
+                'url' => $this->buildObjectUrl($object),
+                'success' => true,
+                'raw' => $result,
+            ];
+        } catch (Throwable $e) {
             throw new Exception("下载失败:".$e->getMessage());
         }
     }
@@ -141,5 +203,27 @@ class Tencent implements IService
     private function getBucket(): string
     {
         return $this->config->getBucket() . '-' . $this->config->getEndpoint();
+    }
+
+    private function isDirectoryPath(string $path): bool
+    {
+        return substr($path, -1) === '/';
+    }
+
+    private function buildObjectUrl(string $path): ?string
+    {
+        $domain = rtrim((string) $this->config->getOption('domain', ''), '/');
+        if ($domain === '') {
+            return null;
+        }
+
+        return $domain . '/' . ltrim($path, '/');
+    }
+
+    private function assertLocalFileExists(string $filePath): void
+    {
+        if (!is_file($filePath)) {
+            throw new Exception($filePath . ' file does not exist');
+        }
     }
 }

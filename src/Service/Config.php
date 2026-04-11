@@ -26,19 +26,20 @@ class Config
 
     public function __construct(array $config)
     {
-        if (! empty($config['access_key'])
-            || ! empty($config['secret_key'])
-            || ! empty($config['bucket'])
-            || ! empty($config['endpoint'])
-            || is_array($config['options'])) {
-            $this->access_key = $config['access_key'];
-            $this->secret_key = $config['secret_key'];
-            $this->bucket = $config['bucket'];
-            $this->endpoint = $config['endpoint'];
-            $this->options = $config['options'];
-        }else{
+        if (
+            empty($config['access_key'])
+            || empty($config['secret_key'])
+            || empty($config['bucket'])
+            || empty($config['endpoint'])
+        ) {
             throw new InvalidArgumentException("配置参数错误");
         }
+
+        $this->access_key = $config['access_key'];
+        $this->secret_key = $config['secret_key'];
+        $this->bucket = $config['bucket'];
+        $this->endpoint = $config['endpoint'];
+        $this->options = isset($config['options']) && is_array($config['options']) ? $config['options'] : [];
     }
 
     public function getBucket(): string
@@ -66,8 +67,8 @@ class Config
         return $this->options;
     }
 
-    public function getOption(string $name)
+    public function getOption(string $name, $default = null)
     {
-        return $this->options[$name];
+        return $this->options[$name] ?? $default;
     }
 }
