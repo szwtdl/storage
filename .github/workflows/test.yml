@@ -4,20 +4,40 @@ on:
   push:
     branches: [ v2.0.0 ]
   pull_request:
+
 jobs:
   phpunit:
+    runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        php_version: [ 7.4,8.0,8.1,8.2,8.3 ]
-    runs-on: ubuntu-latest
+        php_version: [7.4, 8.0, 8.1, 8.2, 8.3]
+
     steps:
-      - uses: actions/checkout@v2
-      - name: Setup PHP environment
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php_version }}
-          coverage: xdebug
+          extensions: mbstring, curl, json
+          coverage: none   # 🚀 提速（不要 xdebug）
+
+      # ✅ Composer 缓存（关键优化）
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ matrix.php_version }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-${{ matrix.php_version }}-
+
       - name: Install dependencies
-        run: composer install
-      - name: PHPUnit check
-        run: ./vendor/bin/phpunit --coverage-text
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run PHPUnit
+        run: ./vendor/bin/phpunit
